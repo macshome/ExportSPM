@@ -19,11 +19,10 @@ struct ExportSPM: ParsableCommand {
         let extractor = SPMExtractor()
 
         let parsedProj = try parser.parseProject(projectURL)
-        let spmInfo = try extractor.extractDependencies(parsedProj)
+        let spmInfo = extractor.findDependencies(parsedProj)
     }
 
     func getURL(_ path: String) throws -> URL {
-
         let projectURL = URL(fileURLWithPath: path + "/project.pbxproj")
         try projectURL.checkResourceIsReachable()
         return projectURL

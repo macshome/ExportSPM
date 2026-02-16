@@ -51,15 +51,30 @@ struct ParserTests {
 
 @Suite("Tests for SPM extraction logic")
 struct ExtractorTests {
-    @Test("Test SPM Extraction", arguments: try TestResources.projects.filter { $0.lastPathComponent == "SPM.xcodeproj" })
+    @Test(
+        "Test SPM Extraction",
+        arguments: try TestResources.projects.filter { $0.lastPathComponent == "SPM.xcodeproj" }
+    )
     func testSPMExtraction(_ url: URL) async throws {
         let parser = XcodeParser()
         let sut = SPMExtractor()
         let projectURL = url.appending(path: "project.pbxproj")
         let project = try parser.parseProject(projectURL)
-        let spmInfo = try sut.extractDependencies(project)
-        sut.findDependencies(project)
+        let spmInfo = sut.findDependencies(project)
         #expect(spmInfo.count > 0, "Expected to extract at least one SPM dependency")
+    }
+
+    @Test(
+        "Test SPM Extraction with No Dependencies",
+        arguments: try TestResources.projects.filter { $0.lastPathComponent == "NoSPM.xcodeproj" }
+    )
+    func testNoSPMExtraction(_ url: URL) async throws {
+        let parser = XcodeParser()
+        let sut = SPMExtractor()
+        let projectURL = url.appending(path: "project.pbxproj")
+        let project = try parser.parseProject(projectURL)
+        let spmInfo = sut.findDependencies(project)
+        #expect(spmInfo.isEmpty, "Expected to extract no SPM dependencies")
     }
 }
 

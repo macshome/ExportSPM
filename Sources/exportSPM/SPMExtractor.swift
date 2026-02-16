@@ -11,10 +11,6 @@ import Xdecodable
 typealias SwiftPackageDependencies = [String: XCRemoteSwiftPackageReference]
 
 struct SPMExtractor {
-    func extractDependencies(_ project: XcodeProject) throws -> [String] {
-        return ["foo"]
-    }
-
     func findDependencies(_ project: XcodeProject) -> SwiftPackageDependencies {
         var swiftPackages = SwiftPackageDependencies()
 
