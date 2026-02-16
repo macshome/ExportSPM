@@ -6,21 +6,26 @@
 
 import ArgumentParser
 import Foundation
+import Xdecodable
 
 @main
-struct exportSPM: ParsableCommand {
+struct ExportSPM: ParsableCommand {
     @Argument(help: "Path to the .xcodeproj file.")
     var xcodeprojPath = ""
 
     mutating func run() throws {
-            let projectURL = try getURL(xcodeprojPath)
+        let projectURL = try getURL(xcodeprojPath)
+        let parser = XcodeParser()
+        let extractor = SPMExtractor()
+
+        let parsedProj = try parser.parseProject(projectURL)
+        let spmInfo = try extractor.extractDependencies(parsedProj)
     }
 
     func getURL(_ path: String) throws -> URL {
+
         let projectURL = URL(fileURLWithPath: path + "/project.pbxproj")
-          guard try projectURL.checkResourceIsReachable() else {
-              throw ValidationError("Path to project file does not exist.")
-          }
+        try projectURL.checkResourceIsReachable()
         return projectURL
     }
 }
