@@ -8,18 +8,21 @@
 import Foundation
 import Xdecodable
 
+typealias SwiftPackageDependencies = [String: XCRemoteSwiftPackageReference]
+
 struct SPMExtractor {
     func extractDependencies(_ project: XcodeProject) throws -> [String] {
         return ["foo"]
     }
 
-    func findDependencies(_ project: XcodeProject)  {
-        var swiftPackages: [String: XCRemoteSwiftPackageReference] = [:]
+    func findDependencies(_ project: XcodeProject) -> SwiftPackageDependencies {
+        var swiftPackages = SwiftPackageDependencies()
 
         for (id, object) in project.objects {
             if case .remotePackageReference(let package) = object {
                 swiftPackages[id] = package
             }
         }
+        return swiftPackages
     }
 }
