@@ -76,6 +76,85 @@ struct ExtractorTests {
         let spmInfo = sut.findDependencies(project)
         #expect(spmInfo.isEmpty, "Expected to extract no SPM dependencies")
     }
+
+    @Test("Find Swift Version", arguments: try TestResources.projects.filter { $0.lastPathComponent == "SPM.xcodeproj" })
+    func testFindSwiftVersion(_ url: URL) async throws {
+        let parser = XcodeParser()
+        let sut = SPMExtractor()
+        let projectURL = url.appending(path: "project.pbxproj")
+        let project = try parser.parseProject(projectURL)
+        let swiftVersion = sut.findSwiftVersion(project)
+        #expect(swiftVersion == "5.0", "Expected to find Swift version 5.0")
+    }
+
+    @Test("Find Swift Version fallback", arguments: try TestResources.projects.filter { $0.lastPathComponent == "SPM-No-Version.xcodeproj" })
+    func testVersionFallback(_ url: URL) async throws {
+        let parser = XcodeParser()
+        let sut = SPMExtractor()
+        let projectURL = url.appending(path: "project.pbxproj")
+        let project = try parser.parseProject(projectURL)
+        let swiftVersion = sut.findSwiftVersion(project)
+        #expect(swiftVersion == "6.0", "Expected to find Swift version 6.0")
+    }
+
+    @Test("Version comparison handles major versions correctly")
+    func testVersionComparison() {
+        let extractor = SPMExtractor()
+
+        #expect(extractor.compareVersions("5.0", "6.0") == true)
+        #expect(extractor.compareVersions("6.0", "5.0") == false)
+        #expect(extractor.compareVersions("5.0", "5.0") == false)
+    }
+
+    @Test("Version comparison handles minor versions correctly")
+    func testVersionComparisonMinor() {
+        let extractor = SPMExtractor()
+
+        #expect(extractor.compareVersions("5.7", "5.8") == true)
+        #expect(extractor.compareVersions("5.9", "5.10") == true)
+        #expect(extractor.compareVersions("5.7", "5.7") == false)
+    }
+
+    @Test("Version comparison handles different lengths")
+    func testVersionComparisonDifferentLengths() {
+        let extractor = SPMExtractor()
+
+        #expect(extractor.compareVersions("5", "5.0") == false)
+        #expect(extractor.compareVersions("5.0", "5") == false)
+        #expect(extractor.compareVersions("5", "5.0.1") == true)
+        #expect(extractor.compareVersions("5.7.1", "5.7") == false)
+    }
+
+    @Test("Version normalization handles single component")
+    func testNormalizeVersionSingle() {
+        let extractor = SPMExtractor()
+
+        #expect(extractor.normalizeVersion("5") == "5.0")
+        #expect(extractor.normalizeVersion("6") == "6.0")
+    }
+
+    @Test("Version normalization handles two components")
+    func testNormalizeVersionDouble() {
+        let extractor = SPMExtractor()
+
+        #expect(extractor.normalizeVersion("5.7") == "5.7")
+        #expect(extractor.normalizeVersion("6.0") == "6.0")
+    }
+
+    @Test("Version normalization truncates patch version")
+    func testNormalizeVersionTruncate() {
+        let extractor = SPMExtractor()
+
+        #expect(extractor.normalizeVersion("5.7.1") == "5.7")
+        #expect(extractor.normalizeVersion("6.0.1") == "6.0")
+    }
+
+    @Test("Version normalization handles empty string")
+    func testNormalizeVersionEmpty() {
+        let extractor = SPMExtractor()
+
+        #expect(extractor.normalizeVersion("") == "6.0")
+    }
 }
 
 /// Helper struct for loading test project resources from the bundle.
