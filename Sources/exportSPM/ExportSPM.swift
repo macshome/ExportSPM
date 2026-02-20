@@ -19,7 +19,7 @@ struct ExportSPM: ParsableCommand {
         let extractor = SPMExtractor()
 
         let parsedProj = try parser.parseProject(projectURL)
-        let spmInfo = extractor.findDependencies(parsedProj)
+        let projectInfo = extractor.getProjectInfo(parsedProj)
     }
 
     func getURL(_ path: String) throws -> URL {

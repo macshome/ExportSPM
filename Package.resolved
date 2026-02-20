@@ -1,5 +1,5 @@
 {
-  "originHash" : "c0e9a08f5f133b1f1e77a47a6e88f9667bb34bf67a08d32b26306ddf141f2b5a",
+  "originHash" : "b19776c9c65ab48a4b6938525881b09484f142b07efc1ee4a4b8478da598c6d2",
   "pins" : [
     {
       "identity" : "swift-argument-parser",
@@ -15,8 +15,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/macshome/Xdecodable",
       "state" : {
-        "revision" : "a4e1714a6f495ee2bf62fc475999f23918e43c94",
-        "version" : "1.0.4"
+        "revision" : "c23bb8d6a160d4451497d47cc145e355882ada08",
+        "version" : "1.0.5"
       }
     }
   ],

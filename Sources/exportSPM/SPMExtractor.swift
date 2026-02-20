@@ -8,12 +8,26 @@
 import Foundation
 import Xdecodable
 
-/// Maps object IDs to their corresponding remote Swift package references.
-typealias SwiftPackageDependencies = [String: XCRemoteSwiftPackageReference]
-typealias SwiftToolsVersion = String
 
 /// Extracts Swift Package Manager dependencies from an `XcodeProject`.
 struct SPMExtractor {
+
+
+    /// Gets all the required data about a project and it's remote Swift Package Manager dependencies.
+    /// - Parameter project: The decoded Xcode project to scan.
+    /// - Returns: A `ProjectInfo` struct containing the project name, targets, dependencies, and Swift version.
+    func getProjectInfo(_ project: XcodeProject) -> ProjectInfo {
+        let targets = project.objects.values.compactMap { object -> PBXNativeTarget? in
+            if case .nativeTarget(let target) = object {
+                return target
+            }
+            return nil
+        }
+        let dependencies = findDependencies(project)
+        let swiftVersion = findSwiftVersion(project)
+        let name = findFirstTargetName(project)
+        return ProjectInfo(name: name, targets: targets, dependencies: dependencies, swiftVersion: swiftVersion)
+    }
 
     /// Finds all remote Swift package references in the project.
     ///
@@ -82,7 +96,7 @@ struct SPMExtractor {
     }
 
     /// Compares two version strings numerically.
-     func compareVersions(_ v1: String, _ v2: String) -> Bool {
+    func compareVersions(_ v1: String, _ v2: String) -> Bool {
         let parts1 = v1.split(separator: ".").compactMap { Int($0) }
         let parts2 = v2.split(separator: ".").compactMap { Int($0) }
 
@@ -98,7 +112,7 @@ struct SPMExtractor {
     }
 
     /// Normalizes a version string to major.minor format.
-     func normalizeVersion(_ version: String) -> String {
+    func normalizeVersion(_ version: String) -> String {
         let parts = version.split(separator: ".").compactMap { Int($0) }
 
         guard parts.count >= 2 else {
@@ -106,5 +120,56 @@ struct SPMExtractor {
         }
 
         return "\(parts[0]).\(parts[1])"
+    }
+
+    /// Extracts the project name from the Xcode project file path.
+    ///
+    /// The project name is derived from the `.xcodeproj` directory name.
+    /// For example, given "/path/to/MyProject.xcodeproj/project.pbxproj",
+    /// returns "MyProject".
+    ///
+    /// - Parameter projectURL: URL to the project.pbxproj file.
+    /// - Returns: The project name, or an empty string if it cannot be determined.
+    func findProjectName(from projectURL: URL) -> String {
+        let pathComponents = projectURL.pathComponents
+
+        // Find the .xcodeproj component
+        for component in pathComponents.reversed() {
+            if component.hasSuffix(".xcodeproj") {
+                // Remove the .xcodeproj extension
+                let projectName = String(component.dropLast(".xcodeproj".count))
+                return projectName
+            }
+        }
+
+        return ""
+    }
+
+    /// Finds the name of the first target in the project.
+    ///
+    /// Returns the name of the first native target found in the project's target list.
+    /// This is useful for generating Package.swift files when the primary target name is needed.
+    ///
+    /// - Parameter project: The decoded Xcode project to scan.
+    /// - Returns: The first target's name, or an empty string if no targets are found.
+    func findFirstTargetName(_ project: XcodeProject) -> String {
+        // Get the root project object
+        guard let rootObject = project.objects[project.rootObject],
+              case .project(let pbxProject) = rootObject else {
+            return ""
+        }
+
+        // Get the first target ID from the project's targets array
+        guard let firstTargetId = pbxProject.targets.first else {
+            return ""
+        }
+
+        // Look up the target object and extract its name
+        guard let targetObject = project.objects[firstTargetId],
+              case .nativeTarget(let target) = targetObject else {
+            return ""
+        }
+
+        return target.name
     }
 }

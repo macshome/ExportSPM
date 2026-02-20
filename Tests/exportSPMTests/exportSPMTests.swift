@@ -8,6 +8,7 @@
 import ArgumentParser
 import Foundation
 import Testing
+import Xdecodable
 @testable import exportSPM
 
 @Suite("Tests for the main executable")
@@ -154,6 +155,116 @@ struct ExtractorTests {
         let extractor = SPMExtractor()
 
         #expect(extractor.normalizeVersion("") == "6.0")
+    }
+
+    @Test("Find project name from xcodeproj path")
+    func testFindProjectName() {
+        let extractor = SPMExtractor()
+        let url = URL(fileURLWithPath: "/path/to/MyProject.xcodeproj/project.pbxproj")
+
+        #expect(extractor.findProjectName(from: url) == "MyProject")
+    }
+
+    @Test("Find project name with complex path")
+    func testFindProjectNameComplexPath() {
+        let extractor = SPMExtractor()
+        let url = URL(fileURLWithPath: "/Users/developer/Documents/MyApp.xcodeproj/project.pbxproj")
+
+        #expect(extractor.findProjectName(from: url) == "MyApp")
+    }
+
+    @Test("Find project name with hyphens and underscores")
+    func testFindProjectNameSpecialCharacters() {
+        let extractor = SPMExtractor()
+        let url = URL(fileURLWithPath: "/path/to/My-Project_Name.xcodeproj/project.pbxproj")
+
+        #expect(extractor.findProjectName(from: url) == "My-Project_Name")
+    }
+
+    @Test("Find project name returns empty for invalid path")
+    func testFindProjectNameInvalid() {
+        let extractor = SPMExtractor()
+        let url = URL(fileURLWithPath: "/path/to/project.pbxproj")
+
+        #expect(extractor.findProjectName(from: url) == "")
+    }
+
+    @Test("Find first target name from test project", arguments: try TestResources.projects.filter { $0.lastPathComponent == "SPM.xcodeproj" })
+    func testFindFirstTargetName(_ url: URL) throws {
+        let extractor = SPMExtractor()
+        let parser = XcodeParser()
+        let projectURL = url.appending(path: "project.pbxproj")
+
+        let project = try parser.parseProject(projectURL)
+        let targetName = extractor.findFirstTargetName(project)
+
+        #expect(!targetName.isEmpty, "Expected to find a target name")
+        #expect(targetName == "R.swiftTest", "Expected first target to be R.swiftTest")
+    }
+
+    @Test("Get project info returns all required fields", arguments: try TestResources.projects.filter { $0.lastPathComponent == "SPM.xcodeproj" })
+    func projectInfoContainsAllRequiredData(_ url: URL) throws {
+        let extractor = SPMExtractor()
+        let parser = XcodeParser()
+        let projectURL = url.appending(path: "project.pbxproj")
+
+        let project = try parser.parseProject(projectURL)
+        let projectInfo = extractor.getProjectInfo(project)
+
+        #expect(!projectInfo.name.isEmpty, "Project name should not be empty")
+        #expect(!projectInfo.targets.isEmpty, "Targets array should not be empty")
+        #expect(projectInfo.swiftVersion == "5.0", "Swift version should be 5.0")
+        #expect(projectInfo.dependencies.count > 0, "Should have dependencies")
+    }
+
+    @Test("Get project info contains correct target count", arguments: try TestResources.projects.filter { $0.lastPathComponent == "SPM.xcodeproj" })
+    func projectInfoTargetCountIsAccurate(_ url: URL) throws {
+        let extractor = SPMExtractor()
+        let parser = XcodeParser()
+        let projectURL = url.appending(path: "project.pbxproj")
+
+        let project = try parser.parseProject(projectURL)
+        let projectInfo = extractor.getProjectInfo(project)
+
+        #expect(projectInfo.targets.count >= 1, "Should have at least one target")
+    }
+
+    @Test("Get project info first target is named correctly", arguments: try TestResources.projects.filter { $0.lastPathComponent == "SPM.xcodeproj" })
+    func projectInfoFirstTargetNameMatches(_ url: URL) throws {
+        let extractor = SPMExtractor()
+        let parser = XcodeParser()
+        let projectURL = url.appending(path: "project.pbxproj")
+
+        let project = try parser.parseProject(projectURL)
+        let projectInfo = extractor.getProjectInfo(project)
+
+        #expect(projectInfo.name == "R.swiftTest", "Project info name should match first target")
+    }
+
+    @Test("Get project info with no dependencies project", arguments: try TestResources.projects.filter { $0.lastPathComponent == "NoSPM.xcodeproj" })
+    func projectInfoHandlesNoTargetsWithoutDependencies(_ url: URL) throws {
+        let extractor = SPMExtractor()
+        let parser = XcodeParser()
+        let projectURL = url.appending(path: "project.pbxproj")
+
+        let project = try parser.parseProject(projectURL)
+        let projectInfo = extractor.getProjectInfo(project)
+
+        #expect(projectInfo.dependencies.isEmpty, "Should have no dependencies")
+        #expect(projectInfo.swiftVersion == "5.0", "Swift version should match project configuration")
+    }
+
+    @Test("Get project info swift version matches highest target version", arguments: try TestResources.projects.filter { $0.lastPathComponent == "SPM.xcodeproj" })
+    func projectInfoSwiftVersionIsHighestFromTargets(_ url: URL) throws {
+        let extractor = SPMExtractor()
+        let parser = XcodeParser()
+        let projectURL = url.appending(path: "project.pbxproj")
+
+        let project = try parser.parseProject(projectURL)
+        let projectInfo = extractor.getProjectInfo(project)
+        let manualVersion = extractor.findSwiftVersion(project)
+
+        #expect(projectInfo.swiftVersion == manualVersion, "Project info Swift version should match extracted version")
     }
 }
 
